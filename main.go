@@ -13,6 +13,8 @@ import (
 	"github.com/alghiffari10/pokeDexCLI/internal/pokecache"
 )
 
+// TODO: Refactor the code to make it more readable
+
 type cliCommand struct {
 	name        string
 	description string
