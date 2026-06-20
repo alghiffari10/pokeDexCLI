@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -18,10 +19,31 @@ type cliCommand struct {
 	callback    func(*config, []string) error
 }
 
+type PokemonResponse struct {
+	Name           string `json:"name"`
+	BaseExperience int    `json:"base_experience"`
+	Height         int    `json:"height"`
+	Weight         int    `json:"weight"`
+
+	Stats []struct {
+		BaseStat int `json:"base_stat"`
+		Stat     struct {
+			Name string `json:"name"`
+		} `json:"stat"`
+	} `json:"stats"`
+
+	Types []struct {
+		Type struct {
+			Name string `json:"name"`
+		} `json:"type"`
+	} `json:"types"`
+}
+
 type config struct {
 	Next     *string
 	Previous *string
-	cache    *pokecache.Cache
+	Cache    *pokecache.Cache
+	Pokedex  map[string]PokemonResponse
 }
 type ExploreResponse struct {
 	PokemmonEncounters []struct {
@@ -49,7 +71,7 @@ func mapCommand(cfg *config, cmd []string) error {
 		url = *cfg.Next
 	}
 
-	dataByte, err := getLocationData(url, cfg.cache)
+	dataByte, err := getLocationData(url, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -75,7 +97,7 @@ func mapCommandBack(cfg *config, cmd []string) error {
 		return nil
 	}
 
-	dataByte, err := getLocationData(*cfg.Previous, cfg.cache)
+	dataByte, err := getLocationData(*cfg.Previous, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -113,7 +135,7 @@ func exploreCommand(cfg *config, cmd []string) error {
 
 	url := "https://pokeapi.co/api/v2/location-area/" + areaName
 
-	data, err := getLocationData(url, cfg.cache)
+	data, err := getLocationData(url, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -133,8 +155,51 @@ func exploreCommand(cfg *config, cmd []string) error {
 	return nil
 }
 
+func catchCommand(cfg *config, cmd []string) error {
+	if len(cmd) == 0 {
+		return fmt.Errorf("Please provide pokemon name")
+	}
+
+	PokemonName := cmd[0]
+	fmt.Printf("Throwing a Pokeball at %v...\n", PokemonName)
+
+	url := "https://pokeapi.co/api/v2/pokemon/" + PokemonName
+
+	data, err := getLocationData(url, cfg.Cache)
+	if err != nil {
+		return err
+	}
+
+	var pokemon PokemonResponse
+	if err := json.Unmarshal(data, &pokemon); err != nil {
+		return nil
+	}
+
+	prop := rand.Intn(pokemon.BaseExperience)
+
+	if prop < 35 {
+		fmt.Printf("%v was caught!\n", pokemon.Name)
+		cfg.Pokedex[pokemon.Name] = pokemon
+	} else {
+		fmt.Printf("%v escaped!\n", pokemon.Name)
+	}
+
+	return nil
+}
+
+// TODO: Implementing inpsect command
+func inspectCommand()
+
 func helpCommand(cfg *config, cmd []string) error {
-	fmt.Println("Welcome to the Pokedex!\nUsage:\n\nhelp\t: Displays a help message\nmap\t: Displays a map\nmapb\t: Displaying a previous location\nexplore\t: Displaying list of pokemon based on location being choose\nexit\t: Exit the Pokedex")
+	fmt.Println(`Welcome to the Pokedex!
+Usage:
+
+help       : Displays a help message
+map        : Displays the next locations
+mapb       : Displays the previous locations
+explore    : Displays Pokémon in a location area
+catch      : Attempt to catch a Pokémon
+exit       : Exit the Pokedex`)
 	return nil
 }
 func getLocationData(url string, cache *pokecache.Cache) ([]byte, error) {
@@ -143,8 +208,6 @@ func getLocationData(url string, cache *pokecache.Cache) ([]byte, error) {
 		fmt.Println("Using cache")
 		return data, nil
 	}
-
-	fmt.Println("Making HTTP request")
 
 	res, err := http.Get(url)
 	if err != nil {
@@ -169,7 +232,8 @@ func main() {
 	cfg := &config{
 		Next:     nil,
 		Previous: nil,
-		cache:    pokecache.NewCache(5 * time.Second),
+		Cache:    pokecache.NewCache(5 * time.Second),
+		Pokedex:  make(map[string]PokemonResponse),
 	}
 
 	supportCommands := map[string]cliCommand{
@@ -201,6 +265,18 @@ func main() {
 			name:        "Explore Command",
 			description: "Displaying list of pokemon based on location being choose",
 			callback:    exploreCommand,
+		},
+
+		"catch": {
+			name:        "Catch Command",
+			description: "Catch your Pokemon",
+			callback:    catchCommand,
+		},
+
+		"inspect": {
+			name:        "Inspect Command",
+			description: "Inspect a caught pokemon",
+			callback:    inspectCommand,
 		},
 	}
 	scanner := bufio.NewScanner(os.Stdin)
