@@ -131,7 +131,7 @@ func exploreCommand(cfg *config, cmd []string) error {
 	}
 
 	areaName := cmd[0]
-	fmt.Printf("Exploring %v...", areaName)
+	fmt.Printf("Exploring %v...\n", areaName)
 
 	url := "https://pokeapi.co/api/v2/location-area/" + areaName
 
@@ -180,6 +180,7 @@ func catchCommand(cfg *config, cmd []string) error {
 	if prop < 35 {
 		fmt.Printf("%v was caught!\n", pokemon.Name)
 		cfg.Pokedex[pokemon.Name] = pokemon
+		fmt.Println("You may now inspect it with the inspect command.")
 	} else {
 		fmt.Printf("%v escaped!\n", pokemon.Name)
 	}
@@ -187,11 +188,10 @@ func catchCommand(cfg *config, cmd []string) error {
 	return nil
 }
 
-// TODO: Implementing inpsect command
 func inspectCommand(cfg *config, cmd []string) error {
 
 	if len(cmd) == 0 {
-		return fmt.Errorf("Please provdie a pokemon name")
+		return fmt.Errorf("Please provide a pokemon name")
 	}
 	name := cmd[0]
 
@@ -218,6 +218,17 @@ func inspectCommand(cfg *config, cmd []string) error {
 	return nil
 }
 
+func pokedexCommand(cfg *config, cmd []string) error {
+	if len(cfg.Pokedex) == 0 {
+		return fmt.Errorf("You don't have any pokemon")
+	}
+	fmt.Println("Your Pokedex:")
+	for name := range cfg.Pokedex {
+		fmt.Printf("\t- %v\n", name)
+	}
+	return nil
+}
+
 func helpCommand(cfg *config, cmd []string) error {
 	fmt.Println(`Welcome to the Pokedex!
 Usage:
@@ -228,6 +239,7 @@ mapb       : Displays the previous locations
 explore    : Displays Pokémon in a location area
 catch      : Attempt to catch a Pokémon
 inspect    : Inspect a caught pokemon
+pokedex    : Check pokemon you have
 exit       : Exit the Pokedex`)
 	return nil
 }
@@ -306,6 +318,12 @@ func main() {
 			name:        "Inspect Command",
 			description: "Inspect a caught pokemon",
 			callback:    inspectCommand,
+		},
+
+		"pokedex": {
+			name:        "Pokedex Command",
+			description: "Check pokemon you have",
+			callback:    pokedexCommand,
 		},
 	}
 	scanner := bufio.NewScanner(os.Stdin)
