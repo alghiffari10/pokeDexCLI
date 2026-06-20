@@ -188,7 +188,35 @@ func catchCommand(cfg *config, cmd []string) error {
 }
 
 // TODO: Implementing inpsect command
-func inspectCommand()
+func inspectCommand(cfg *config, cmd []string) error {
+
+	if len(cmd) == 0 {
+		return fmt.Errorf("Please provdie a pokemon name")
+	}
+	name := cmd[0]
+
+	pokemon, ok := cfg.Pokedex[name]
+	if !ok {
+		fmt.Println("you have not caught that pokemon")
+		return nil
+	}
+
+	fmt.Printf("Name: %v\n", pokemon.Name)
+	fmt.Printf("Height: %v\n", pokemon.Height)
+	fmt.Printf("Weight: %v\n", pokemon.Weight)
+
+	fmt.Println("Stats:")
+	for _, stat := range pokemon.Stats {
+		fmt.Printf("\t- %v: %v\n", stat.Stat.Name, stat.BaseStat)
+	}
+
+	fmt.Println("Types:")
+	for _, pokemonType := range pokemon.Types {
+		fmt.Printf("\t- %v\n", pokemonType.Type.Name)
+	}
+
+	return nil
+}
 
 func helpCommand(cfg *config, cmd []string) error {
 	fmt.Println(`Welcome to the Pokedex!
@@ -199,6 +227,7 @@ map        : Displays the next locations
 mapb       : Displays the previous locations
 explore    : Displays Pokémon in a location area
 catch      : Attempt to catch a Pokémon
+inspect    : Inspect a caught pokemon
 exit       : Exit the Pokedex`)
 	return nil
 }
